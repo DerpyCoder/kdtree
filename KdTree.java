@@ -162,59 +162,98 @@ public class KdTree {
 
     // all points that are inside the rectangle (or on the boundary)
     public Iterable<Point2D> range(RectHV rect) {
-        return rangg(rect);
+        nullCheck(rect);
+        Queue<Point2D> q = new Queue<>();
+        if (root == null) return null;
+        search(q, root, rect, true);
+        return q;
     }
 
-    private boolean intersects(RectHV rect, Point2D p, boolean isVert) {
-        if (isVert) {
-            return rect.xmin() <= p.x() && rect.xmax() >= p.x();
-        }
-        else {
-            return rect.ymin() <= p.y() && rect.ymax() >= p.y();
-        }
-    }
-
-    private void search(Queue<Point2D> q, Node node, RectHV rect) {
-        if (node == null) return;
-
-        search(q, node.left, rect);
-        search(q, node.right, rect);
-
-        Point2D p = node.p;
-
-        if (p.x() >= rect.xmin() && p.x() <= rect.xmax() && p.y() >= rect.ymin() && p.y() <= rect
-                .ymax()) {
-            q.enqueue(p);
+    /*
+        private boolean intersects(RectHV rect, Point2D p, boolean isVert) {
+            if (isVert) {
+                return rect.xmin() <= p.x() && rect.xmax() >= p.x();
+            }
+            else {
+                return rect.ymin() <= p.y() && rect.ymax() >= p.y();
+            }
         }
 
-
-    }
+      */
 
     private double center(double min, double max) {
         return (max - min) / 2 + min;
     }
 
-    // Hides the variables
+    private void search(Queue<Point2D> q, Node node, RectHV rect, boolean isVert) {
+        if (node == null) return;
+
+        // Cases: if left is shorter, no need for right, and vice versa
+
+        Point2D p = node.p;
+
+        if (rect.contains(p)) {
+            q.enqueue(p);
+        }
+
+        double px = p.x();
+        double py = p.y();
+
+        if ((rect.intersects(new RectHV(px, node.axis.ymin(), px, node.axis.ymax()))
+                && isVert) || (
+                rect.intersects(new RectHV(node.axis.xmin(), py, node.axis.xmax(), py))
+                        && !isVert)) {
+            search(q, node.left, rect, !isVert);
+            search(q, node.right, rect, !isVert);
+        }
+        else {
+            if ((isVert && (px > center(rect.xmin(), rect.xmax()))) || (!isVert && (py
+                    > center(rect.ymin(), rect.ymax())))) {
+                search(q, node.left, rect, !isVert);
+            }
+            else {
+                search(q, node.right, rect, !isVert);
+            }
+        }
+
+    }
+
+
+
+
+
+
+
+    /*
+
     private Iterable<Point2D> rangg(RectHV rect) {
         Queue<Point2D> q = new Queue<>();
         Node x = root;
         boolean isVert = true;
         while (x != null) {
-            // check if intersects the axis
-            if (intersects(rect, x.p, isVert)) {
-                // search down trees
-                search(q, x, rect);
-                break;
-            }
-            else {
-                // if it doesn't intersect, go closer to query point
-                if (isVert) {
+            // if it doesn't intersect, go closer to query point
+            if (isVert) {
+                if (rect.intersects(new RectHV(x.p.x(), x.axis.ymin(), x.p.x(), x.axis.ymax()))) {
+                    // check if intersects the axis
+                    // search down trees
+                    search(q, x, rect);
+                    break;
+                }
+                else {
                     if (x.p.x() > center(rect.xmin(), rect.xmax())) {
                         x = x.left;
                     }
                     else {
                         x = x.right;
                     }
+                }
+            }
+            else {
+                if (rect.intersects(new RectHV(x.p.x(), x.axis.ymin(), x.p.x(), x.axis.ymax()))) {
+                    // check if intersects the axis
+                    // search down trees
+                    search(q, x, rect);
+                    break;
                 }
                 else {
                     if ((x.p.y() > center(rect.ymin(), rect.ymax()))) {
@@ -224,59 +263,66 @@ public class KdTree {
                         x = x.right;
                     }
                 }
-                isVert = !isVert;
             }
+            isVert = !isVert;
         }
         return q;
     }
+    */
 
     // a nearest neighbor in the set to point p; null if the set is empty
     public Point2D nearest(Point2D p) {
         nullCheck(p);
 
+        if (root == null) return null;
         return near(root, p, root.p, true);
     }
 
     private Point2D near(Node node, Point2D p, Point2D min, boolean isVert) {
 
-        if (node == null) return min;
+        Point2D c = min;
 
-        if (node.p.equals(p)) return node.p;
-
-        if (node.p.distanceSquaredTo(p) < min.distanceSquaredTo(p))
-            min = node.p;
+        if (node == null) return c;
 
 
-        // check which side the query point is on compared to the split
+        if (node.p.distanceSquaredTo(p) < c.distanceSquaredTo(p)) {
+            c = node.p;
+        }
 
-        Node near;
-        Node far;
-        if (isVert) {
-            if (node.p.x() > p.x()) {
-                near = node.left;
-                far = node.right;
+        if (node.axis.distanceSquaredTo(p) < c.distanceSquaredTo(p)) {
+            Node closeS;
+            Node farS;
+
+            if ((isVert && (node.p.x() > p.x())) || (!isVert && (node.p.y() > p.y()))) {
+                closeS = node.left;
+                farS = node.right;
             }
             else {
-                near = node.right;
-                far = node.left;
-
+                closeS = node.right;
+                farS = node.left;
             }
+            c = near(closeS, p, c, !isVert);
+            c = near(farS, p, c, !isVert);
+        }
+        return c;
+    }
+
+        /*
+        Point2D distt = near(near, p, min, mindist, isVert);
+
+        if (distt.distanceSquaredTo(p) < mindist) {
+            min = distt;
+
         }
         else {
-            if (node.p.y() > p.y()) {
-                near = node.left;
-                far = node.right;
-            }
-            else {
-                near = node.right;
-                far = node.left;
+            Point2D point2D = near(far, p, min, mindist, isVert);
+            if (point2D.distanceSquaredTo(p) < mindist) {
+                min = point2D;
+                // mindist = distt.distanceSquaredTo(p);
             }
         }
-        min = near(near, p, min, isVert);
-        min = near(far, p, min, isVert);
+        */
 
-        return min;
-    }
 
     /*
     // Yuhh pythag a^2 + b^2 = c^2

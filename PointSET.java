@@ -89,27 +89,31 @@ public class PointSET {
 
         Iterator<Point2D> it = bst.iterator();
 
-        Point2D p2 = it.next();
-        Point2D min = p2;
-        double dist = distance(p2.x(), p2.y(), p.x(), p.y());
-
-        while (it.hasNext()) {
-            p2 = it.next();
-            double distc = distance(p2.x(), p2.y(), p.x(), p.y());
-            if (distc <= dist) {
-                min = p2;
-                dist = distc;
+        if (it.hasNext()) {
+            Point2D p2 = it.next();
+            Point2D min = p2;
+            double dist = p2.distanceSquaredTo(p);
+            while (it.hasNext()) {
+                p2 = it.next();
+                double distc = p2.distanceSquaredTo(p);
+                if (distc <= dist) {
+                    min = p2;
+                    dist = distc;
+                }
             }
+            return min;
         }
-
-        return min;
-
+        else {
+            return null;
+        }
     }
 
+    /*
     // Yuhh pythag a^2 + b^2 = c^2
     private double distance(double x1, double y1, double x2, double y2) {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
     }
+    */
 
     /*
     // unit testing of the methods (optional)
